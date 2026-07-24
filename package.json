@@ -1,0 +1,29 @@
+{
+  "name": "@w10k/platform",
+  "version": "0.1.4",
+  "description": "CLI to pull and update the w10k platform — luxury website builder for freelancers",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://studio.w10k.net/",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "bin": {
+    "w10k": "bin/w10k.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "w10k",
+    "luxury",
+    "landing-page",
+    "website-builder",
+    "freelancer"
+  ]
+}
