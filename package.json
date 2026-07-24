@@ -1,9 +1,16 @@
 {
   "name": "@w10k/platform",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI to pull and update the w10k platform — luxury website builder for freelancers",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://studio.w10k.net/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dongpytran/w10k-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dongpytran/w10k-platform/issues"
+  },
   "engines": {
     "node": ">=18"
   },
