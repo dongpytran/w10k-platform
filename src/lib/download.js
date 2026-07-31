@@ -72,12 +72,15 @@ export async function downloadLatestDistro(key) {
   };
 
   const res = await fetch(PROXY_URL, { headers });
-  if (res.status === 401 || res.status === 403 || res.status === 426 || res.status === 503) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || 'License is not valid for downloads.');
-  }
   if (!res.ok || !res.body) {
-    throw new Error(`Download failed (HTTP ${res.status}).`);
+    // Surface the server's own explanation for ANY error status (not a fixed
+    // list) so the user always sees why — e.g. the version-floor 426 message.
+    const body = await res.json().catch(() => null);
+    const detail = (body && body.error) || `Download failed (HTTP ${res.status}).`;
+    const err = new Error(detail);
+    err.httpStatus = res.status;
+    err.needsUpgrade = res.status === 426;
+    throw err;
   }
 
   const plan = res.headers.get('x-w10k-plan');

@@ -100,6 +100,19 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('\n❌ ', err.message || err);
+  console.error('\n❌  ' + (err.message || err));
+
+  // Always tell the user how to get onto the latest version — a stale cached
+  // CLI (npx reuses old copies) is the most common cause of confusing errors.
+  const cmd = ['pull', 'update', 'info'].includes(command) ? command : 'pull';
+  const upgradeCmd = `npx --yes @w10k/platform@latest ${cmd} --key=<your-key>`;
+
+  if (err.needsUpgrade || err.httpStatus === 426 || /upgrade|out ?dated|need >=/i.test(String(err.message))) {
+    console.error('\n⬆️   Your CLI is outdated. Update and re-run:');
+    console.error(`      ${upgradeCmd}\n`);
+  } else {
+    console.error('\n💡  If this keeps happening, you may be on a cached old version — update and retry:');
+    console.error(`      ${upgradeCmd}\n`);
+  }
   process.exit(1);
 });
