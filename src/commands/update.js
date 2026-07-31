@@ -8,7 +8,10 @@
  *   knowledge/process/
  *   recipes/
  *   taste/              (reference-DNA library + index — buyers get the latest tastes)
- *   .agents/skills/
+ *   docs/
+ *   .agents/skills/  (+ .claude/skills)
+ *   packages/motion/    (mandatory motion baseline — vendored Lenis + Barba + GSAP glue)
+ *   packages/webgl/     (concept-driven Three.js + shader power tool, vendored local)
  *   CLAUDE.md
  *   AGENTS.md
  *
@@ -18,7 +21,7 @@
  *   inspirations/
  *   laboratory/
  *   apps/
- *   packages/forms/     (buyer may have customised embed)
+ *   packages/forms/     (buyer may have customised embed endpoint)
  */
 
 import fs from 'fs';
@@ -41,6 +44,11 @@ const CORE_PATHS = [
   'docs',
   path.join('.agents', 'skills'),
   path.join('.claude', 'skills'),
+  // Platform code buyers copy FROM (never edit) — always ship latest so the
+  // CLAUDE.md / ship-skill pointers to these never dangle. packages/forms is
+  // deliberately NOT here: the buyer customises its endpoint.
+  path.join('packages', 'motion'),
+  path.join('packages', 'webgl'),
   'CLAUDE.md',
   'AGENTS.md',
 ];
