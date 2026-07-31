@@ -34,6 +34,19 @@ function cliVersion() {
 }
 
 /**
+ * Write the signed per-buyer watermark into the installed tree. No-op if the
+ * proxy did not return one. Never throws — a write failure must not fail a pull.
+ * @param {string} dest      the installation directory (cwd)
+ * @param {object|null} license  the decoded token from downloadLatestDistro
+ */
+export function writeWatermark(dest, license) {
+  if (!license) return;
+  try {
+    fs.writeFileSync(path.join(dest, '.w10k-license.json'), JSON.stringify(license, null, 2) + '\n');
+  } catch {}
+}
+
+/**
  * Extract a zip into a directory using system `tar` — bsdtar reads zip and
  * ships on macOS, Linux, and Windows 10+ (`unzip` does not exist on Windows).
  */
@@ -45,7 +58,7 @@ export async function unzip(zipPath, destDir) {
 /**
  * Download the latest distro through the proxy and extract it.
  * @param {string} key  the buyer's license key
- * @returns {{ tag: string, extractDir: string, tmpDir: string }}
+ * @returns {{ tag: string, extractDir: string, tmpDir: string, license: object|null }}
  */
 export async function downloadLatestDistro(key) {
   // Send the stable per-machine install_id. The proxy binds the license to the
@@ -71,6 +84,18 @@ export async function downloadLatestDistro(key) {
   if (plan) console.log(`✅  ${plan} — license verified.`);
   console.log('⬇️   Downloading distro…');
 
+  // Signed per-buyer watermark (base64 JSON). Written into the install tree by
+  // pull/update so any redistributed copy traces back to this license.
+  let license = null;
+  const licB64 = res.headers.get('x-w10k-lic');
+  if (licB64) {
+    try {
+      license = JSON.parse(Buffer.from(licB64, 'base64').toString('utf8'));
+    } catch {
+      license = null;
+    }
+  }
+
   const tag = res.headers.get('x-w10k-tag') || 'latest';
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'w10k-'));
   const zipPath = path.join(tmpDir, 'w10k-distro.zip');
@@ -89,5 +114,5 @@ export async function downloadLatestDistro(key) {
       : extractDir;
 
   console.log(`📦  Distro ${tag} ready.`);
-  return { tag, extractDir: rootDir, tmpDir };
+  return { tag, extractDir: rootDir, tmpDir, license };
 }

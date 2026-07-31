@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import { requireActiveKey } from '../lib/license.js';
-import { downloadLatestDistro } from '../lib/download.js';
+import { downloadLatestDistro, writeWatermark } from '../lib/download.js';
 
 export async function pull(key) {
   await requireActiveKey(key);
@@ -32,7 +32,7 @@ export async function pull(key) {
 
   console.log(`\n📥  Pulling w10k platform into: ${dest}\n`);
 
-  const { tag, extractDir, tmpDir } = await downloadLatestDistro(key);
+  const { tag, extractDir, tmpDir, license } = await downloadLatestDistro(key);
 
   // Copy everything from the distro into the current directory
   const entries = fs.readdirSync(extractDir);
@@ -41,6 +41,9 @@ export async function pull(key) {
     const dst  = path.join(dest, entry);
     fs.cpSync(src, dst, { recursive: true, force: true });
   }
+
+  // Write the per-buyer watermark into the install.
+  writeWatermark(dest, license);
 
   // Clean up temp files
   fs.rmSync(tmpDir, { recursive: true, force: true });

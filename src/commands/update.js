@@ -28,7 +28,7 @@ import fs from 'fs';
 import path from 'path';
 import { cpSync, rmSync } from 'fs';
 import { requireActiveKey } from '../lib/license.js';
-import { downloadLatestDistro } from '../lib/download.js';
+import { downloadLatestDistro, writeWatermark } from '../lib/download.js';
 
 // Paths that are owned by upstream and will be updated.
 // NOTE: packages/forms ships in the distro (pull) but is NOT listed here —
@@ -69,7 +69,7 @@ export async function update(key) {
   console.log(`\n🔄  Updating w10k core in: ${dest}`);
   console.log('    (Your build-notes, inspirations, and laboratory/ will NOT be touched)\n');
 
-  const { tag, extractDir, tmpDir } = await downloadLatestDistro(key);
+  const { tag, extractDir, tmpDir, license } = await downloadLatestDistro(key);
 
   let updated = 0;
   let skipped = 0;
@@ -97,6 +97,9 @@ export async function update(key) {
     console.log(`  ✓  ${corePath}`);
     updated++;
   }
+
+  // Refresh the per-buyer watermark.
+  writeWatermark(dest, license);
 
   // Clean up temp files
   rmSync(tmpDir, { recursive: true, force: true });
