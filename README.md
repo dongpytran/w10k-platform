@@ -28,13 +28,13 @@ No install needed — run it with `npx` in any project directory:
 
 ```bash
 # Download the full platform into the current directory
-npx @w10k/platform pull --key=<your-license-key>
+npx --yes @w10k/platform@latest pull --key=<your-license-key>
 
 # Merge the latest core (catalog, knowledge, recipes, skills) — keeps your personal layer
-npx @w10k/platform update --key=<your-license-key>
+npx --yes @w10k/platform@latest update --key=<your-license-key>
 
 # Check your license status and plan
-npx @w10k/platform info --key=<your-license-key>
+npx --yes @w10k/platform@latest info --key=<your-license-key>
 ```
 
 Your license key arrives by email right after purchase. Get one at **[studio.w10k.net](https://studio.w10k.net/)**.

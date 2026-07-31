@@ -54,5 +54,5 @@ export async function pull(key) {
   console.log('  2. Let the AI agent read CLAUDE.md (it will do this automatically)');
   console.log('  3. Run your first build:  /w10k-ship "brief about your client"');
   console.log('\nUpdate anytime with:');
-  console.log(`  npx @w10k/platform update --key=${key}`);
+  console.log(`  npx --yes @w10k/platform@latest update --key=${key}`);
 }

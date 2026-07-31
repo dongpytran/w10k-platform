@@ -14,6 +14,7 @@ import { info } from '../src/commands/info.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -33,7 +34,10 @@ const HELP = `
 @w10k/platform — luxury website builder CLI
 
 Usage:
-  npx @w10k/platform <command> --key=<license-key>
+  npx --yes @w10k/platform@latest <command> --key=<license-key>
+
+  Always include @latest — a bare "npx @w10k/platform" can run a stale cached
+  copy. (The CLI also auto-updates itself on pull/update as a safety net.)
 
 Commands:
   pull    Download the full w10k platform to current directory
@@ -44,39 +48,63 @@ Options:
   --key   Your license key (received via email after purchase)
 
 Examples (Lemon Squeezy keys are UUIDs):
-  npx @w10k/platform pull --key=38b1460a-5104-4067-a91d-77b872934d51
-  npx @w10k/platform update --key=38b1460a-5104-4067-a91d-77b872934d51
-  npx @w10k/platform info --key=38b1460a-5104-4067-a91d-77b872934d51
+  npx --yes @w10k/platform@latest pull --key=38b1460a-5104-4067-a91d-77b872934d51
+  npx --yes @w10k/platform@latest update --key=38b1460a-5104-4067-a91d-77b872934d51
+  npx --yes @w10k/platform@latest info --key=38b1460a-5104-4067-a91d-77b872934d51
 `.trim();
 
-async function checkUpdate() {
+function cmpSemver(a, b) {
+  const pa = String(a).match(/^(\d+)\.(\d+)\.(\d+)/);
+  const pb = String(b).match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!pa || !pb) return 0;
+  for (let i = 1; i <= 3; i++) {
+    const d = Number(pa[i]) - Number(pb[i]);
+    if (d) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * Auto-upgrade. `npx @w10k/platform` (without @latest) can reuse a stale cached
+ * copy, which then fails the proxy's version floor. So on pull/update we check
+ * the published latest and, if this copy is older, transparently re-run the
+ * latest version with the same arguments — the user always ends up on current.
+ * Opt out with W10K_NO_AUTO_UPDATE=1. Offline/timeout → silently run as-is.
+ */
+async function autoUpdate() {
+  if (process.env.W10K_REEXEC === '1' || process.env.W10K_NO_AUTO_UPDATE === '1') return;
   try {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
-    const currentVersion = pkg.version;
+    const current = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')).version;
 
-    const res = await fetch('https://registry.npmjs.org/@w10k/platform/latest', { 
-      signal: AbortSignal.timeout(1000) 
+    const res = await fetch('https://registry.npmjs.org/@w10k/platform/latest', {
+      signal: AbortSignal.timeout(1500),
     });
-    
-    if (res.ok) {
-      const data = await res.json();
-      if (data.version && data.version !== currentVersion) {
-        console.log(`\n\x1b[33m╭─────────────────────────────────────────────────────────────────╮`);
-        console.log(`│                                                                 │`);
-        console.log(`│   ⚠️  Update available! \x1b[2m${currentVersion}\x1b[0m\x1b[33m -> \x1b[1m${data.version}\x1b[0m\x1b[33m                             │`);
-        console.log(`│   Run \x1b[1mnpx --yes @w10k/platform@latest ${command || ''}\x1b[0m\x1b[33m to use it.             │`);
-        console.log(`│                                                                 │`);
-        console.log(`╰─────────────────────────────────────────────────────────────────╯\x1b[0m\n`);
-      }
+    if (!res.ok) return;
+    const latest = (await res.json()).version;
+    if (!latest || cmpSemver(current, latest) >= 0) return; // already current
+
+    if (command === 'pull' || command === 'update') {
+      console.log(`\n⬆️   w10k CLI ${current} is outdated — auto-updating to ${latest}…\n`);
+      const r = spawnSync('npx', ['--yes', `@w10k/platform@${latest}`, ...process.argv.slice(2)], {
+        stdio: 'inherit',
+        env: { ...process.env, W10K_REEXEC: '1' },
+        shell: process.platform === 'win32',
+      });
+      process.exit(r.status ?? 0);
     }
+
+    // Non-download commands: notify, don't re-exec.
+    console.log(
+      `\n⬆️   Update available: ${current} → ${latest}. Run: npx --yes @w10k/platform@latest ${command || ''}\n`,
+    );
   } catch (e) {
-    // Ignore update check failures silently (e.g. no internet, timeout)
+    // Offline / timeout / registry error → run the current version.
   }
 }
 
 async function main() {
-  await checkUpdate();
+  await autoUpdate();
 
   if (!command || command === '--help' || command === '-h') {
     console.log(HELP);
