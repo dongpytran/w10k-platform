@@ -60,15 +60,17 @@ export async function unzip(zipPath, destDir) {
  * @param {string} key  the buyer's license key
  * @returns {{ tag: string, extractDir: string, tmpDir: string, license: object|null }}
  */
-export async function downloadLatestDistro(key) {
+export async function downloadLatestDistro(key, cmd = 'pull') {
   // Send the stable per-machine install_id. The proxy binds the license to the
   // first install_id it sees; a different machine gets a new id and is rejected.
-  // This is the single-seat gate that limits key sharing.
+  // This is the single-seat gate that limits key sharing. `cmd` (pull|update)
+  // lets the proxy block `update` for the Starter tier (no updates).
   const installId = getOrCreateInstallId();
   const headers = {
     'x-license-key': key,
     'x-install-id': installId,
     'x-w10k-cli': cliVersion(),
+    'x-w10k-cmd': cmd,
   };
 
   const res = await fetch(PROXY_URL, { headers });

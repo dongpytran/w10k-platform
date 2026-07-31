@@ -69,7 +69,7 @@ export async function update(key) {
   console.log(`\n🔄  Updating w10k core in: ${dest}`);
   console.log('    (Your build-notes, inspirations, and laboratory/ will NOT be touched)\n');
 
-  const { tag, extractDir, tmpDir, license } = await downloadLatestDistro(key);
+  const { tag, extractDir, tmpDir, license } = await downloadLatestDistro(key, 'update');
 
   let updated = 0;
   let skipped = 0;
