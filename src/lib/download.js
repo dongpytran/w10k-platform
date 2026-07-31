@@ -12,7 +12,7 @@ import path from 'path';
 import os from 'os';
 import { createWriteStream, mkdirSync } from 'fs';
 import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
@@ -87,7 +87,6 @@ export async function downloadLatestDistro(key, cmd = 'pull') {
 
   const plan = res.headers.get('x-w10k-plan');
   if (plan) console.log(`✅  ${plan} — license verified.`);
-  console.log('⬇️   Downloading distro…');
 
   // Signed per-buyer watermark (base64 JSON). Written into the install tree by
   // pull/update so any redistributed copy traces back to this license.
@@ -102,10 +101,42 @@ export async function downloadLatestDistro(key, cmd = 'pull') {
   }
 
   const tag = res.headers.get('x-w10k-tag') || 'latest';
+  const total = Number(res.headers.get('x-w10k-size')) || 0;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'w10k-'));
   const zipPath = path.join(tmpDir, 'w10k-distro.zip');
 
-  await pipeline(Readable.fromWeb(res.body), createWriteStream(zipPath));
+  // Live download progress so a multi-MB pull never looks frozen. In a TTY we
+  // rewrite one line with a percentage (or MB when the size is unknown); in a
+  // non-TTY (CI / piped output) we print a single static line to avoid \r spam.
+  const isTTY = Boolean(process.stdout.isTTY);
+  const mb = (n) => (n / 1048576).toFixed(1);
+  if (!isTTY) console.log('⬇️   Downloading distro…');
+  let downloaded = 0;
+  let lastShown = -1;
+  const progress = new Transform({
+    transform(chunk, _enc, cb) {
+      downloaded += chunk.length;
+      if (isTTY) {
+        if (total) {
+          const pct = Math.floor((downloaded / total) * 100);
+          if (pct !== lastShown) {
+            lastShown = pct;
+            process.stdout.write(`\r⬇️   Downloading distro… ${pct}%  (${mb(downloaded)}/${mb(total)} MB)`);
+          }
+        } else {
+          const whole = Math.floor(downloaded / 1048576);
+          if (whole !== lastShown) {
+            lastShown = whole;
+            process.stdout.write(`\r⬇️   Downloading distro… ${mb(downloaded)} MB`);
+          }
+        }
+      }
+      cb(null, chunk);
+    },
+  });
+
+  await pipeline(Readable.fromWeb(res.body), progress, createWriteStream(zipPath));
+  if (isTTY) process.stdout.write(`\r⬇️   Downloading distro… 100%  (${mb(downloaded)} MB)          \n`);
 
   const extractDir = path.join(tmpDir, 'extracted');
   console.log('📂  Extracting…');
